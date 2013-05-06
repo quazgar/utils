@@ -1,0 +1,64 @@
+#!/bin/bash
+
+screensave="${HOME}/.screen_saves"
+
+function save() {
+  echo -n "# " > "$screensave"
+  date >> "$screensave"
+
+  for s in $(screen -list | grep "tached" | awk '{print $1}'); do
+    echo "Getting info for $s"
+
+    name="${s#*.}"
+    pid="${s%%.*}"
+    childpids=$(ps --ppid $pid -o pid --no-headers)
+
+    echo "$name" >> "$screensave"
+    for c in $childpids; do
+      cwd=$(readlink /proc/$c/cwd)
+      echo "$cwd" >> "$screensave"
+    done
+    echo "---" >> "$screensave"
+  done
+}
+
+function restore() {
+  while read line; do
+    [[ "$line" =~ ^[[:space:]]*# ]] && { echo "$line" ; continue; }
+    name="$line"
+    newtempfile=$(mktemp ~/.byobu/windows.XXXXX)
+    i=0
+    while read line; do
+      [[ "$line" == "---" ]] && break
+      echo "chdir $line" >> "$newtempfile"
+      echo "screen $i bash" >> "$newtempfile"
+      i=$(( ++i ))
+    done
+    echo -e "\nselect 0\n" >> "$newtempfile"
+    #echo -e "\nsleep 2\ndetach\n" >> "$newtempfile"
+    tempid="${newtempfile##*windows.}"
+
+    # Actually start the new screen session
+    export BYOBU_WINDOWS="$newtempfile"
+    #export BYOBU_PREFIX="/usr/"
+    #screen -c /usr/share/byobu/profiles/screenrc -d -m -S "${name}"&
+    byobu --version 2>/dev/null | grep -q '3\.33' \
+      && echo "This byobu version will probably fail!"
+    byobu -d -m -S ${name}
+    # cat "$newtempfile"
+    sleep 5
+    rm "$newtempfile"
+  done < "$screensave"
+  echo "Done."
+}
+
+if [[ $1 == "save" ]]; then
+  save
+elif [[ $1 == "restore" ]]; then
+  restore
+else
+  cat << EOF
+Usage:
+$0 (save|restore)
+EOF
+fi
