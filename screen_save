@@ -7,7 +7,7 @@ function save() {
   date >> "$screensave"
 
   for s in $(screen -list | grep "tached" | awk '{print $1}'); do
-    echo "Getting info for $s"
+    #echo "Getting info for $s"
 
     name="${s#*.}"
     pid="${s%%.*}"
