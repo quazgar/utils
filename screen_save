@@ -4,7 +4,8 @@ screensave="${HOME}/.screen_saves"
 
 function save() {
   # only save if there are running screens!
-  pgrep -U "$UID" screen || exit
+  #ps xua | grep screen
+  pgrep -U "$UID" "screen" > /dev/null || exit
   echo -n "# " > "$screensave"
   date >> "$screensave"
 
